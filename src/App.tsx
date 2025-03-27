@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, CreditCard, Wallet, Smartphone, Package, CircleDollarSign, FileSpreadsheet } from 'lucide-react';
+import { DollarSign, CreditCard, Wallet, Smartphone, Package, CircleDollarSign, FileSpreadsheet, Trash2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 interface Product {
@@ -21,6 +21,8 @@ function App() {
     paymentMethod: 'pix'
   });
 
+  const [reportName, setReportName] = useState('');
+
   useEffect(() => {
     localStorage.setItem('products', JSON.stringify(products));
   }, [products]);
@@ -40,6 +42,13 @@ function App() {
     setNewProduct({ name: '', price: '', paymentMethod: 'pix' });
   };
 
+  const clearAllData = () => {
+    if (window.confirm('Tem certeza que deseja limpar todos os dados? Esta ação não pode ser desfeita.')) {
+      setProducts([]);
+      localStorage.removeItem('products');
+    }
+  };
+
   const getTotalAmount = () => products.reduce((sum, product) => sum + product.price, 0);
 
   const getPaymentMethodTotal = (method: string) => 
@@ -48,6 +57,11 @@ function App() {
       .reduce((sum, product) => sum + product.price, 0);
 
   const exportToExcel = () => {
+    if (!reportName.trim()) {
+      alert('Por favor, insira um nome para o relatório antes de exportar.');
+      return;
+    }
+
     // Prepare products data with payment method columns
     const productsData = products.map(product => ({
       'Nome do Produto': product.name,
@@ -70,6 +84,7 @@ function App() {
 
     // Prepare statistics data
     const statisticsData = [
+      { 'Estatística': 'Nome do Relatório', 'Valor': reportName },
       { 'Estatística': 'Total de Produtos', 'Valor': products.length },
       { 'Estatística': 'Valor Total', 'Valor': `R$ ${getTotalAmount().toFixed(2)}` },
       { 'Estatística': 'Total PIX', 'Valor': `R$ ${getPaymentMethodTotal('pix').toFixed(2)}` },
@@ -86,54 +101,72 @@ function App() {
     XLSX.utils.book_append_sheet(wb, ws1, "Produtos");
     XLSX.utils.book_append_sheet(wb, ws2, "Estatísticas");
 
-    // Save file
-    XLSX.writeFile(wb, "relatorio-vendas.xlsx");
+    // Save file with report name
+    XLSX.writeFile(wb, `relatorio-vendas-${reportName}.xlsx`);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">Sistema de Gestão de Vendas</h1>
-          <button
-            onClick={exportToExcel}
-            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors"
-          >
-            <FileSpreadsheet className="w-5 h-5" />
-            Exportar para Excel
-          </button>
+    <div className="bg-gray-100 p-8 min-h-screen">
+      <div className="mx-auto max-w-6xl">
+        <div className="flex md:flex-row flex-col justify-between items-start md:items-center gap-4 mb-8">
+          <h1 className="font-bold text-gray-800 text-3xl">Sistema de Gestão de Vendas</h1>
+          <div className="flex md:flex-row flex-col gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={reportName}
+                onChange={(e) => setReportName(e.target.value)}
+                placeholder="Nome do Relatório (ex: Dia 01)"
+                className="px-4 py-2 border rounded-md"
+              />
+              <button
+                onClick={exportToExcel}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-md text-white whitespace-nowrap transition-colors"
+              >
+                <FileSpreadsheet className="w-5 h-5" />
+                Exportar Excel
+              </button>
+            </div>
+            <button
+              onClick={clearAllData}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-md text-white transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+              Limpar Dados
+            </button>
+          </div>
         </div>
         
         {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form onSubmit={handleSubmit} className="bg-white shadow-md mb-8 p-6 rounded-lg">
+          <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Produto</label>
+              <label className="block mb-2 font-medium text-gray-700 text-sm">Nome do Produto</label>
               <input
                 type="text"
                 value={newProduct.name}
                 onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                className="w-full p-2 border rounded-md"
+                className="p-2 border rounded-md w-full"
                 placeholder="Digite o nome do produto"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Valor</label>
+              <label className="block mb-2 font-medium text-gray-700 text-sm">Valor</label>
               <input
                 type="number"
                 value={newProduct.price}
                 onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                className="w-full p-2 border rounded-md"
+                className="p-2 border rounded-md w-full"
                 placeholder="0.00"
                 step="0.01"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento</label>
+              <label className="block mb-2 font-medium text-gray-700 text-sm">Forma de Pagamento</label>
               <select
                 value={newProduct.paymentMethod}
                 onChange={(e) => setNewProduct({ ...newProduct, paymentMethod: e.target.value })}
-                className="w-full p-2 border rounded-md"
+                className="p-2 border rounded-md w-full"
               >
                 <option value="pix">PIX</option>
                 <option value="dinheiro">Dinheiro</option>
@@ -143,20 +176,20 @@ function App() {
           </div>
           <button
             type="submit"
-            className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+            className="bg-blue-600 hover:bg-blue-700 mt-4 px-4 py-2 rounded-md text-white transition-colors"
           >
             Inserir Produto
           </button>
         </form>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
+        <div className="bg-white shadow-md mb-8 rounded-lg overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Produto</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pagamento</th>
+                <th className="px-6 py-3 font-medium text-gray-500 text-xs text-left uppercase tracking-wider">Produto</th>
+                <th className="px-6 py-3 font-medium text-gray-500 text-xs text-left uppercase tracking-wider">Valor</th>
+                <th className="px-6 py-3 font-medium text-gray-500 text-xs text-left uppercase tracking-wider">Pagamento</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -164,7 +197,7 @@ function App() {
                 <tr key={product.id}>
                   <td className="px-6 py-4 whitespace-nowrap">{product.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap">R$ {product.price.toFixed(2)}</td>
-                  <td className="px-6 py-4 whitespace-nowrap capitalize">{product.paymentMethod}</td>
+                  <td className="px-6 py-4 capitalize whitespace-nowrap">{product.paymentMethod}</td>
                 </tr>
               ))}
             </tbody>
@@ -172,53 +205,53 @@ function App() {
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow-md">
+        <div className="gap-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          <div className="bg-white shadow-md p-6 rounded-lg">
             <div className="flex items-center gap-4">
               <Package className="w-8 h-8 text-blue-600" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-700">Total de Produtos</h3>
-                <p className="text-2xl font-bold text-gray-900">{products.length}</p>
+                <h3 className="font-semibold text-gray-700 text-lg">Total de Produtos</h3>
+                <p className="font-bold text-gray-900 text-2xl">{products.length}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white shadow-md p-6 rounded-lg">
             <div className="flex items-center gap-4">
               <CircleDollarSign className="w-8 h-8 text-green-600" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-700">Valor Total</h3>
-                <p className="text-2xl font-bold text-gray-900">R$ {getTotalAmount().toFixed(2)}</p>
+                <h3 className="font-semibold text-gray-700 text-lg">Valor Total</h3>
+                <p className="font-bold text-gray-900 text-2xl">R$ {getTotalAmount().toFixed(2)}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white shadow-md p-6 rounded-lg">
             <div className="flex items-center gap-4">
               <Smartphone className="w-8 h-8 text-purple-600" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-700">Total PIX</h3>
-                <p className="text-2xl font-bold text-gray-900">R$ {getPaymentMethodTotal('pix').toFixed(2)}</p>
+                <h3 className="font-semibold text-gray-700 text-lg">Total PIX</h3>
+                <p className="font-bold text-gray-900 text-2xl">R$ {getPaymentMethodTotal('pix').toFixed(2)}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white shadow-md p-6 rounded-lg">
             <div className="flex items-center gap-4">
               <DollarSign className="w-8 h-8 text-yellow-600" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-700">Total Dinheiro</h3>
-                <p className="text-2xl font-bold text-gray-900">R$ {getPaymentMethodTotal('dinheiro').toFixed(2)}</p>
+                <h3 className="font-semibold text-gray-700 text-lg">Total Dinheiro</h3>
+                <p className="font-bold text-gray-900 text-2xl">R$ {getPaymentMethodTotal('dinheiro').toFixed(2)}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white shadow-md p-6 rounded-lg">
             <div className="flex items-center gap-4">
               <CreditCard className="w-8 h-8 text-red-600" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-700">Total Cartão</h3>
-                <p className="text-2xl font-bold text-gray-900">R$ {getPaymentMethodTotal('cartao').toFixed(2)}</p>
+                <h3 className="font-semibold text-gray-700 text-lg">Total Cartão</h3>
+                <p className="font-bold text-gray-900 text-2xl">R$ {getPaymentMethodTotal('cartao').toFixed(2)}</p>
               </div>
             </div>
           </div>
